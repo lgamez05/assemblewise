@@ -358,7 +358,7 @@
   </div>
 </div>
 
-<div class="version" id="version-tag">v1.1</div>
+<div class="version" id="version-tag">v1.3</div>
 
 <script>
 "use strict";
@@ -371,8 +371,23 @@
    ============================================================ */
 const BRAND = {
   name: "AssembleWise",           // <-- rename here
-  version: "v1.1",
+  version: "v1.3",
   premiumPrice: "US$9.99"
+};
+
+/* ============================================================
+   MONETIZATION — Phase 1 launch switch (Luis's decision,
+   Oct 13, 2026: launch free, "sin anuncios", no revenue yet).
+   enabled:false = PHASE 1: the app is 100% free — no ad slots,
+   no Premium upsell, no checkout anywhere in the UI (EN/ES/FR);
+   every guide, video, search, scan and favorite stays free and
+   fully functional for everyone.
+   Flip to true ONLY in Phase 2, after the company (LLC) exists
+   and ads + Premium payments are switched on — that restores
+   the full v1.2 Premium / mock-checkout behavior unchanged.
+   ============================================================ */
+const MONETIZATION = {
+  enabled: false                  // <-- Phase 1: OFF. Phase 2: true.
 };
 
 /* ================= I18N ================= */
@@ -1563,10 +1578,14 @@ function renderChrome(){
   document.querySelectorAll(".lang button").forEach(b=>b.classList.toggle("on", b.dataset.l===S.lang));
   document.querySelectorAll("#set-lang button").forEach(b=>b.classList.toggle("on", b.dataset.l===S.lang));
   $("set-rate").value = S.rate;
-  // premium state
+  // premium state — the whole monetization surface (banner, ad slots,
+  // settings Premium block, checkout) is hidden while MONETIZATION is
+  // off (Phase 1), regardless of the stored premium flag.
   const premium = !!S.premium;
-  $("premium-banner").classList.toggle("hidden", premium);
-  ["ad-home","ad-product","ad-done"].forEach(id=>$(id).classList.toggle("hidden", premium));
+  const monOff = !MONETIZATION.enabled;
+  $("premium-banner").classList.toggle("hidden", premium || monOff);
+  ["ad-home","ad-product","ad-done"].forEach(id=>$(id).classList.toggle("hidden", premium || monOff));
+  ["t-setpremium","set-premium-state","set-gopremium"].forEach(id=>$(id).classList.toggle("hidden", monOff));
   $("set-premium-state").textContent = premium ? t("premiumActive") : t("premiumText");
   $("set-gopremium").textContent = premium ? t("premiumActive") : t("premiumBuy")(BRAND.premiumPrice);
   $("set-gopremium").disabled = premium;
@@ -1790,11 +1809,12 @@ $("btn-settings").onclick=()=>$("ov-settings").classList.remove("hidden");
 $("set-close").onclick=()=>$("ov-settings").classList.add("hidden");
 $("ov-settings").addEventListener("click",e=>{ if(e.target.id==="ov-settings") $("ov-settings").classList.add("hidden"); });
 $("set-rate").addEventListener("input",e=>{ S.rate=parseFloat(e.target.value); save(); $("rate-val").textContent=t("speedVal")(S.rate.toFixed(2).replace(/0$/,"")); });
-$("premium-banner").onclick=()=>$("ov-premium").classList.remove("hidden");
-$("set-gopremium").onclick=()=>{ $("ov-settings").classList.add("hidden"); $("ov-premium").classList.remove("hidden"); };
+$("premium-banner").onclick=()=>{ if(!MONETIZATION.enabled) return; $("ov-premium").classList.remove("hidden"); };
+$("set-gopremium").onclick=()=>{ if(!MONETIZATION.enabled) return; $("ov-settings").classList.add("hidden"); $("ov-premium").classList.remove("hidden"); };
 $("buy-cancel").onclick=()=>$("ov-premium").classList.add("hidden");
 $("ov-premium").addEventListener("click",e=>{ if(e.target.id==="ov-premium") $("ov-premium").classList.add("hidden"); });
 $("buy-premium").onclick=()=>{
+  if(!MONETIZATION.enabled) return;   // Phase 1: checkout is inert
   const b=$("buy-premium"); b.disabled=true; b.textContent=t("processing");
   setTimeout(()=>{ S.premium=true; save(); b.disabled=false; b.textContent=t("buyDone");
     setTimeout(()=>{ $("ov-premium").classList.add("hidden"); renderChrome(); }, 700);
